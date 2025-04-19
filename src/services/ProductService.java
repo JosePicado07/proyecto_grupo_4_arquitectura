@@ -1,138 +1,156 @@
 package services;
 
-import models.Discount;
-import java.time.LocalDate;
+import models.Product;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class DiscountService {
-    
-    private List<Discount> discounts;
-    
-    public DiscountService() {
-        this.discounts = new ArrayList<>();
-        initializeDefaultDiscounts();
+public class ProductService {
+
+    private final List<Product> products;
+    private final Map<String, List<Product>> productsByCategory;
+
+    public ProductService() {
+        this.products = new ArrayList<>();
+        this.productsByCategory = new HashMap<>();
     }
-    
-    private void initializeDefaultDiscounts() {
-        // Descuento porcentual general
-        discounts.add(new Discount(
-            "Descuento de apertura", 
-            true, 
-            10.0, 
-            LocalDate.now().minusDays(30), 
-            LocalDate.now().plusDays(30),
-            null));
-        
-        // Descuento de monto fijo con código promocional
-        discounts.add(new Discount(
-            "Cupón de bienvenida", 
-            false, 
-            5000.0, 
-            LocalDate.now().minusDays(15), 
-            LocalDate.now().plusDays(15),
-            "BIENVENIDO"));
-            
-        // Descuento sin fecha de fin
-        discounts.add(new Discount(
-            "Descuento clientes frecuentes", 
-            true, 
-            5.0, 
-            LocalDate.now().minusDays(60)));
+
+    public boolean addProduct(Product product, String category) {
+        if (product == null || category == null || category.trim().isEmpty()) {
+            return false;
+        }
+
+        // Verificar si ya existe un producto con el mismo ID
+        boolean exists = products.stream()
+                .anyMatch(p -> p.getId() == product.getId());
+
+        if (exists) {
+            return false;
+        }
+
+        // Añadir el producto a la lista general
+        products.add(product);
+
+        // Añadir a la categoría correspondiente
+        List<Product> categoryProducts = productsByCategory.getOrDefault(category, new ArrayList<>());
+        categoryProducts.add(product);
+        productsByCategory.put(category, categoryProducts);
+
+        return true;
     }
-    
-    public boolean addDiscount(Discount discount) {
-        return discounts.add(discount);
+
+    public boolean updateProduct(Product product) {
+        if (product == null) {
+            return false;
+        }
+
+        // Buscar y actualizar el producto
+        for (int i = 0; i < products.size(); i++) {
+            if (products.get(i).getId() == product.getId()) {
+                products.set(i, product);
+
+                // Actualizar en todas las categorías
+                for (String category : productsByCategory.keySet()) {
+                    List<Product> categoryProducts = productsByCategory.get(category);
+
+                    for (int j = 0; j < categoryProducts.size(); j++) {
+                        if (categoryProducts.get(j).getId() == product.getId()) {
+                            categoryProducts.set(j, product);
+                            break;
+                        }
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
-    
-    public boolean removeDiscount(int id) {
-        return discounts.removeIf(d -> d.getId() == id);
+
+    public boolean removeProduct(int productId) {
+        Optional<Product> productOpt = getProductById(productId);
+
+        if (productOpt.isEmpty()) {
+            return false;
+        }
+
+        Product product = productOpt.get();
+
+        // Eliminar de la lista general
+        products.remove(product);
+
+        // Eliminar de las categorías
+        for (String category : productsByCategory.keySet()) {
+            productsByCategory.get(category).removeIf(p -> p.getId() == productId);
+        }
+
+        return true;
     }
-    
-    public List<Discount> getAllDiscounts() {
-        return new ArrayList<>(discounts);
+
+    public List<Product> getAllProducts() {
+        return new ArrayList<>(products);
     }
-    
-    public List<Discount> getActiveDiscounts() {
-        return discounts.stream()
-                .filter(Discount::estaVigente)
+
+    public Map<String, List<Product>> getProductsByCategory() {
+        return new HashMap<>(productsByCategory);
+    }
+
+    public List<Product> getProductsByCategory(String category) {
+        return productsByCategory.getOrDefault(category, new ArrayList<>());
+    }
+
+    public Optional<Product> getProductById(int id) {
+        return products.stream()
+                .filter(p -> p.getId() == id)
+                .findFirst();
+    }
+
+    public List<String> getAllCategories() {
+        return new ArrayList<>(productsByCategory.keySet());
+    }
+
+    public String getProductCategory(int productId) {
+        for (String category : productsByCategory.keySet()) {
+            boolean inCategory = productsByCategory.get(category).stream()
+                    .anyMatch(p -> p.getId() == productId);
+
+            if (inCategory) {
+                return category;
+            }
+        }
+
+        return null;
+    }
+
+    public List<Product> searchProductsByName(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        String lowerKeyword = keyword.toLowerCase();
+
+        return products.stream()
+                .filter(p -> p.getNombre().toLowerCase().contains(lowerKeyword))
                 .collect(Collectors.toList());
     }
-    
-    public Optional<Discount> getDiscountById(int id) {
-        return discounts.stream()
-                .filter(d -> d.getId() == id)
-                .findFirst();
+
+    public List<Product> searchProductsByPriceRange(double minPrice, double maxPrice) {
+        return products.stream()
+                .filter(p -> p.getPrecio() >= minPrice && p.getPrecio() <= maxPrice)
+                .collect(Collectors.toList());
     }
-    
-    public Optional<Discount> validatePromoCode(String code) {
-        if (code == null || code.isEmpty()) {
-            return Optional.empty();
-        }
-        
-        return discounts.stream()
-                .filter(d -> d.estaVigente() && d.validarCodigo(code))
-                .findFirst();
+
+    public double getProductPrice(int productId) {
+        Optional<Product> productOpt = getProductById(productId);
+        return productOpt.map(Product::getPrecio).orElse(0.0);
     }
-    
-    public DiscountResult applyBestDiscount(double subtotal, String promoCode) {
-        // Primero buscamos si hay un descuento por código promocional
-        Optional<Discount> promoDiscount = validatePromoCode(promoCode);
-        
-        // Si hay un descuento por código, lo aplicamos
-        if (promoDiscount.isPresent()) {
-            Discount discount = promoDiscount.get();
-            double discountAmount = discount.calcularDescuento(subtotal);
-            return new DiscountResult(discount, discountAmount, subtotal - discountAmount);
-        }
-        
-        // Si no hay código o no es válido, buscamos el mejor descuento automático
-        Optional<Discount> bestDiscount = getActiveDiscounts().stream()
-                .filter(d -> d.getCodigoPromo() == null) // Solo descuentos automáticos
-                .max((d1, d2) -> {
-                    double amount1 = d1.calcularDescuento(subtotal);
-                    double amount2 = d2.calcularDescuento(subtotal);
-                    return Double.compare(amount1, amount2);
-                });
-        
-        // Si encontramos un descuento automático, lo aplicamos
-        if (bestDiscount.isPresent()) {
-            Discount discount = bestDiscount.get();
-            double discountAmount = discount.calcularDescuento(subtotal);
-            return new DiscountResult(discount, discountAmount, subtotal - discountAmount);
-        }
-        
-        // Si no hay descuentos aplicables, retornamos sin descuento
-        return new DiscountResult(null, 0, subtotal);
-    }
-    
-    public static class DiscountResult {
-        private final Discount discountApplied;
-        private final double discountAmount;
-        private final double finalAmount;
-        
-        public DiscountResult(Discount discountApplied, double discountAmount, double finalAmount) {
-            this.discountApplied = discountApplied;
-            this.discountAmount = discountAmount;
-            this.finalAmount = finalAmount;
-        }
-        
-        public Discount getDiscountApplied() {
-            return discountApplied;
-        }
-        
-        public double getDiscountAmount() {
-            return discountAmount;
-        }
-        
-        public double getFinalAmount() {
-            return finalAmount;
-        }
-        
-        public boolean hasDiscount() {
-            return discountApplied != null && discountAmount > 0;
-        }
+
+    public boolean isProductAvailable(int productId) {
+        return getProductById(productId).isPresent();
     }
 }
