@@ -1,5 +1,11 @@
 package utils;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.time.LocalDate;
+import java.util.Map;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -17,10 +23,6 @@ import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.time.Day;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
-
-import java.awt.*;
-import java.time.LocalDate;
-import java.util.Map;
 
 public class ChartUtils {
 
