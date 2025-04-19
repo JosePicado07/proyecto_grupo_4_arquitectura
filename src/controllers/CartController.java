@@ -69,4 +69,13 @@ public class CartController {
     public Cart getCart() {
         return cartService.getCart();
     }
+
+    public boolean updateCartItemQuantity(int productId, int newQuantity) {
+        Optional<Product> productOpt = productService.getProductById(productId);
+        if (productOpt.isEmpty()) {
+            return false;
+        }
+        return cartService.updateProductQuantity(productId, newQuantity);
+    }
+    
 }

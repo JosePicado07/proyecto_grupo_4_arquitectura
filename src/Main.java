@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
 
 public class Main {
     static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-    static PrintStream out = System.out;
-    static int menuOption = 0;
-    
+
+    static PrintStream out = System.out;    
     // Servicios
     static AuthService authService;
     static ProductService productService;

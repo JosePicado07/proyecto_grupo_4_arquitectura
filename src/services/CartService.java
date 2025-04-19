@@ -6,6 +6,7 @@ import models.Cart.CartItem;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class CartService {
     
@@ -68,27 +69,7 @@ public class CartService {
     }
     
     public boolean updateProductQuantity(int productId, int newQuantity) {
-        if (newQuantity <= 0) {
-            // Si la cantidad es 0 o negativa, eliminar el producto
-            return removeProduct(productId, getProductQuantity(productId));
-        }
-        
-        int currentQuantity = getProductQuantity(productId);
-        
-        if (currentQuantity == 0) {
-            // El producto no está en el carrito, no se puede actualizar
-            return false;
-        }
-        
-        if (currentQuantity < newQuantity) {
-            // Necesitamos añadir más unidades
-            return cart.addItem(null, newQuantity - currentQuantity); // Esto necesitaría el objeto Product
-        } else if (currentQuantity > newQuantity) {
-            // Necesitamos quitar unidades
-            return cart.removeItem(productId, currentQuantity - newQuantity);
-        }
-        
-        // La cantidad es la misma, no hacemos nada
-        return true;
+        return cart.updateItem(productId, newQuantity);
     }
+
 }

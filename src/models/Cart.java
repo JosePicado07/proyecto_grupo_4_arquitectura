@@ -32,29 +32,82 @@ public class Cart {
     
     public boolean removeItem(int productId, int quantity) {
         int currentQuantity = quantities.getOrDefault(productId, 0);
-        
-        if (currentQuantity < quantity) {
+        if (currentQuantity < quantity || quantity <= 0) {
             return false;
         }
         
         int removed = 0;
         List<Product> toRemove = new ArrayList<>();
-        
         for (Product item : items) {
-            if (item.getId() == productId && removed < quantity) {
+            if (item != null && item.getId() == productId && removed < quantity) {
                 toRemove.add(item);
                 removed++;
             }
         }
         
         items.removeAll(toRemove);
-        
-        if (currentQuantity == quantity) {
-            quantities.remove(productId);
-        } else {
-            quantities.put(productId, currentQuantity - quantity);
+        if (removed > 0) {
+            quantities.put(productId, currentQuantity - removed);
+            if (quantities.get(productId) == 0) {
+                quantities.remove(productId);
+            }
+            return true;
         }
         
+        // Si no se eliminó nada, limpiar la entrada si existe
+        quantities.remove(productId);
+        return false;
+    }
+    
+    public boolean updateItem(int productId, int newQuantity) {
+        if (newQuantity < 0) {
+            return false;
+        }
+        
+        int currentQuantity = quantities.getOrDefault(productId, 0);
+        if (currentQuantity == 0) {
+            return false; // Producto no está en el carrito
+        }
+        
+        if (newQuantity == 0) {
+            quantities.remove(productId);
+            items.removeIf(item -> item != null && item.getId() == productId);
+            return true;
+        }
+        
+        Product product = items.stream()
+                .filter(p -> p != null && p.getId() == productId)
+                .findFirst()
+                .orElse(null);
+        
+        if (product == null) {
+            quantities.remove(productId);
+            return false;
+        }
+        
+        int quantityDifference = newQuantity - currentQuantity;
+        if (quantityDifference > 0) {
+            for (int i = 0; i < quantityDifference; i++) {
+                items.add(product);
+            }
+        } else if (quantityDifference < 0) {
+            int toRemove = -quantityDifference;
+            List<Product> toRemoveList = new ArrayList<>();
+            int removed = 0;
+            for (Product item : items) {
+                if (item != null && item.getId() == productId && removed < toRemove) {
+                    toRemoveList.add(item);
+                    removed++;
+                }
+            }
+            items.removeAll(toRemoveList);
+            if (removed < toRemove) {
+                quantities.remove(productId);
+                return false;
+            }
+        }
+        
+        quantities.put(productId, newQuantity);
         return true;
     }
     
@@ -77,6 +130,7 @@ public class Cart {
     
     public double calculateSubtotal() {
         return items.stream()
+                .filter(product -> product != null)
                 .mapToDouble(Product::getPrecio)
                 .sum();
     }
@@ -86,15 +140,26 @@ public class Cart {
         List<CartItem> cartItems = new ArrayList<>();
         
         for (Product product : items) {
-            productMap.put(product.getId(), product);
+            if (product != null) {
+                productMap.put(product.getId(), product);
+            }
         }
         
+        List<Integer> invalidIds = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : quantities.entrySet()) {
             Product product = productMap.get(entry.getKey());
-            int quantity = entry.getValue();
-            double subtotal = product.getPrecio() * quantity;
-            
-            cartItems.add(new CartItem(product, quantity, subtotal));
+            if (product != null) {
+                int quantity = entry.getValue();
+                double subtotal = product.getPrecio() * quantity;
+                cartItems.add(new CartItem(product, quantity, subtotal));
+            } else {
+                invalidIds.add(entry.getKey());
+            }
+        }
+        
+        // Limpiar IDs inválidos de quantities
+        for (Integer id : invalidIds) {
+            quantities.remove(id);
         }
         
         return cartItems;
