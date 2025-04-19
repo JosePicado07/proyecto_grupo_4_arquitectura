@@ -40,4 +40,8 @@ public class ReportController {
     public Map<String, Integer> getProductQuantitySold(LocalDate date) {
         return reportService.getProductQuantitySold(date);
     }
+    
+    public Map<String, Object> generateSalesTrends() {
+        return reportService.generateSalesTrends();
+    }
 }

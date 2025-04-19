@@ -1,138 +1,138 @@
 package services;
 
-import models.Product;
-
+import models.Discount;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class ProductService {
+public class DiscountService {
     
-    private final List<Product> products;
-    private final Map<Integer, String> productCategories;
+    private List<Discount> discounts;
     
-    public ProductService() {
-        this.products = new ArrayList<>();
-        this.productCategories = new HashMap<>();
-        
-        initializeProducts();
+    public DiscountService() {
+        this.discounts = new ArrayList<>();
+        initializeDefaultDiscounts();
     }
     
-    private void initializeProducts() {
-        // Componentes
-        addProduct(new Product(1, "Procesador AMD Ryzen 5 5600X", 135000.0), "Componentes");
-        addProduct(new Product(2, "Memoria RAM DDR4 16GB 3200MHz", 45000.0), "Componentes");
-        addProduct(new Product(3, "Disco SSD NVMe 1TB", 72000.0), "Componentes");
-        addProduct(new Product(4, "Tarjeta Madre ASUS B550M", 88000.0), "Componentes");
-        addProduct(new Product(5, "Fuente de Poder 650W 80+ Bronze", 43000.0), "Componentes");
-        addProduct(new Product(6, "Tarjeta Gráfica NVIDIA RTX 3060", 230000.0), "Componentes");
-        addProduct(new Product(7, "Enfriamiento Líquido 240mm", 69000.0), "Componentes");
+    private void initializeDefaultDiscounts() {
+        // Descuento porcentual general
+        discounts.add(new Discount(
+            "Descuento de apertura", 
+            true, 
+            10.0, 
+            LocalDate.now().minusDays(30), 
+            LocalDate.now().plusDays(30),
+            null));
         
-        // Periféricos
-        addProduct(new Product(8, "Gabinete ATX con RGB", 39000.0), "Periféricos");
-        addProduct(new Product(9, "Monitor 24'' Full HD 144Hz", 98000.0), "Periféricos");
-        addProduct(new Product(10, "Teclado Mecánico RGB", 27000.0), "Periféricos");
-        
-        // Accesorios
-        addProduct(new Product(11, "Mouse Gaming 12000 DPI", 18500.0), "Accesorios");
-        addProduct(new Product(12, "Auriculares Gaming 7.1", 32000.0), "Accesorios");
-        addProduct(new Product(13, "Mousepad XL RGB", 9500.0), "Accesorios");
-        
-        // Software
-        addProduct(new Product(14, "Windows 11 Pro", 55000.0), "Software");
-        addProduct(new Product(15, "Office 365 (1 año)", 28000.0), "Software");
-    }
-    
-    public boolean addProduct(Product product, String category) {
-        if (products.add(product)) {
-            productCategories.put(product.getId(), category);
-            return true;
-        }
-        return false;
-    }
-    
-    public List<Product> getAllProducts() {
-        return new ArrayList<>(products);
-    }
-    
-    public Map<String, List<Product>> getProductsByCategory() {
-        Map<String, List<Product>> result = new HashMap<>();
-        
-        for (Product product : products) {
-            String category = productCategories.getOrDefault(product.getId(), "Sin categoría");
+        // Descuento de monto fijo con código promocional
+        discounts.add(new Discount(
+            "Cupón de bienvenida", 
+            false, 
+            5000.0, 
+            LocalDate.now().minusDays(15), 
+            LocalDate.now().plusDays(15),
+            "BIENVENIDO"));
             
-            if (!result.containsKey(category)) {
-                result.put(category, new ArrayList<>());
-            }
-            
-            result.get(category).add(product);
-        }
-        
-        return result;
+        // Descuento sin fecha de fin
+        discounts.add(new Discount(
+            "Descuento clientes frecuentes", 
+            true, 
+            5.0, 
+            LocalDate.now().minusDays(60)));
     }
     
-    public List<Product> getProductsByCategory(String category) {
-        return products.stream()
-                .filter(p -> category.equals(productCategories.get(p.getId())))
+    public boolean addDiscount(Discount discount) {
+        return discounts.add(discount);
+    }
+    
+    public boolean removeDiscount(int id) {
+        return discounts.removeIf(d -> d.getId() == id);
+    }
+    
+    public List<Discount> getAllDiscounts() {
+        return new ArrayList<>(discounts);
+    }
+    
+    public List<Discount> getActiveDiscounts() {
+        return discounts.stream()
+                .filter(Discount::estaVigente)
                 .collect(Collectors.toList());
     }
     
-    public Optional<Product> getProductById(int id) {
-        return products.stream()
-                .filter(p -> p.getId() == id)
+    public Optional<Discount> getDiscountById(int id) {
+        return discounts.stream()
+                .filter(d -> d.getId() == id)
                 .findFirst();
     }
     
-    public List<Product> searchProductsByName(String keyword) {
-        if (keyword == null || keyword.isEmpty()) {
-            return new ArrayList<>();
+    public Optional<Discount> validatePromoCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return Optional.empty();
         }
         
-        String lowerKeyword = keyword.toLowerCase();
+        return discounts.stream()
+                .filter(d -> d.estaVigente() && d.validarCodigo(code))
+                .findFirst();
+    }
+    
+    public DiscountResult applyBestDiscount(double subtotal, String promoCode) {
+        // Primero buscamos si hay un descuento por código promocional
+        Optional<Discount> promoDiscount = validatePromoCode(promoCode);
         
-        return products.stream()
-                .filter(p -> p.getNombre().toLowerCase().contains(lowerKeyword))
-                .collect(Collectors.toList());
-    }
-    
-    public List<Product> searchProductsByPriceRange(double minPrice, double maxPrice) {
-        return products.stream()
-                .filter(p -> p.getPrecio() >= minPrice && p.getPrecio() <= maxPrice)
-                .collect(Collectors.toList());
-    }
-    
-    public String getProductCategory(int productId) {
-        return productCategories.getOrDefault(productId, "Sin categoría");
-    }
-    
-    public List<String> getAllCategories() {
-        return new ArrayList<>(productCategories.values().stream()
-                .distinct()
-                .collect(Collectors.toList()));
-    }
-    
-    public boolean updateProduct(Product product) {
-        Optional<Product> existingProduct = getProductById(product.getId());
-        
-        if (existingProduct.isPresent()) {
-            int index = products.indexOf(existingProduct.get());
-            products.set(index, product);
-            return true;
+        // Si hay un descuento por código, lo aplicamos
+        if (promoDiscount.isPresent()) {
+            Discount discount = promoDiscount.get();
+            double discountAmount = discount.calcularDescuento(subtotal);
+            return new DiscountResult(discount, discountAmount, subtotal - discountAmount);
         }
         
-        return false;
-    }
-    
-    public boolean removeProduct(int id) {
-        boolean removed = products.removeIf(p -> p.getId() == id);
+        // Si no hay código o no es válido, buscamos el mejor descuento automático
+        Optional<Discount> bestDiscount = getActiveDiscounts().stream()
+                .filter(d -> d.getCodigoPromo() == null) // Solo descuentos automáticos
+                .max((d1, d2) -> {
+                    double amount1 = d1.calcularDescuento(subtotal);
+                    double amount2 = d2.calcularDescuento(subtotal);
+                    return Double.compare(amount1, amount2);
+                });
         
-        if (removed) {
-            productCategories.remove(id);
+        // Si encontramos un descuento automático, lo aplicamos
+        if (bestDiscount.isPresent()) {
+            Discount discount = bestDiscount.get();
+            double discountAmount = discount.calcularDescuento(subtotal);
+            return new DiscountResult(discount, discountAmount, subtotal - discountAmount);
         }
         
-        return removed;
+        // Si no hay descuentos aplicables, retornamos sin descuento
+        return new DiscountResult(null, 0, subtotal);
+    }
+    
+    public static class DiscountResult {
+        private final Discount discountApplied;
+        private final double discountAmount;
+        private final double finalAmount;
+        
+        public DiscountResult(Discount discountApplied, double discountAmount, double finalAmount) {
+            this.discountApplied = discountApplied;
+            this.discountAmount = discountAmount;
+            this.finalAmount = finalAmount;
+        }
+        
+        public Discount getDiscountApplied() {
+            return discountApplied;
+        }
+        
+        public double getDiscountAmount() {
+            return discountAmount;
+        }
+        
+        public double getFinalAmount() {
+            return finalAmount;
+        }
+        
+        public boolean hasDiscount() {
+            return discountApplied != null && discountAmount > 0;
+        }
     }
 }
