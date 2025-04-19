@@ -1,125 +1,134 @@
 package models;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Bill {
-
-
+public class Discount {
+    
     private static final AtomicInteger idCounter = new AtomicInteger(1);
-
+    
     private int id;
-    private List<Product> productos;
-    private double subtotal;
-    private double impuestos;
-    private double total;
-    private int sinpe;
-    private String cedulaCliente;
-    private LocalDateTime fecha;
-
-    public Bill(List<Product> productos, int sinpe, User currentUser) {
+    private String nombre;
+    private boolean esPorcentual;  // true si es porcentaje, false si es monto fijo
+    private double valor;          // porcentaje (0-100) o monto fijo
+    private LocalDate fechaInicio;
+    private LocalDate fechaFin;    // null si no tiene fecha de fin
+    private String codigoPromo;    // opcional, para descuentos con código
+    
+    public Discount(String nombre, boolean esPorcentual, double valor, 
+                   LocalDate fechaInicio, LocalDate fechaFin, String codigoPromo) {
         this.id = idCounter.getAndIncrement();
-        this.productos = productos;
-        this.subtotal = calcularSubtotal();
-        this.impuestos = subtotal * 0.13;
-        this.total = subtotal + impuestos;
-        this.sinpe = sinpe;
-        this.cedulaCliente = currentUser.getCedula();
-        this.fecha = LocalDateTime.now();
+        this.nombre = nombre;
+        this.esPorcentual = esPorcentual;
+        this.valor = valor;
+        this.fechaInicio = fechaInicio;
+        this.fechaFin = fechaFin;
+        this.codigoPromo = codigoPromo;
+    }
+    
+    public Discount(String nombre, boolean esPorcentual, double valor, LocalDate fechaInicio) {
+        this(nombre, esPorcentual, valor, fechaInicio, null, null);
+    }
+    
+    public boolean estaVigente() {
+        LocalDate hoy = LocalDate.now();
+        return !hoy.isBefore(fechaInicio) && (fechaFin == null || !hoy.isAfter(fechaFin));
+    }
+    
+    public double calcularDescuento(double subtotal) {
+        if (esPorcentual) {
+            return subtotal * (valor / 100.0);
+        } else {
+            return Math.min(valor, subtotal); // El descuento no puede ser mayor que el subtotal
+        }
     }
 
-    private double calcularSubtotal() {
-        return productos.stream()
-                .mapToDouble(Product::getPrecio)
-                .sum();
+    public boolean validarCodigo(String codigo) {
+        return codigoPromo != null && codigoPromo.equals(codigo);
     }
-
-    public void imprimirFactura() {
-        System.out.println("Factura '" + id + "'");
-        System.out.println("Fecha: " + fecha);
-        System.out.println("Cédula del cliente: " + cedulaCliente);
-        System.out.println("Artículos:");
-        productos.forEach(product -> System.out.println(product.toString()));
-        System.out.println("'' Subtotal: " + subtotal + " ''");
-        System.out.println("Impuestos: 13% ''");
-        System.out.println("Total: " + total + " ''");
-        System.out.println("Número de comprobante SINPE: " + sinpe);
-    }
-
+    
+    
     public int getId() {
         return id;
     }
-
-    public void setId(int id) {
-        this.id = id;
+    
+    public String getNombre() {
+        return nombre;
     }
-
-    public List<Product> getProductos() {
-        return productos;
+    
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
-
-    public void setProductos(List<Product> productos) {
-        this.productos = productos;
+    
+    public boolean isEsPorcentual() {
+        return esPorcentual;
     }
-
-    public double getSubtotal() {
-        return subtotal;
+    
+    public void setEsPorcentual(boolean esPorcentual) {
+        this.esPorcentual = esPorcentual;
     }
-
-    public void setSubtotal(double subtotal) {
-        this.subtotal = subtotal;
+    
+    public double getValor() {
+        return valor;
     }
-
-    public double getImpuestos() {
-        return impuestos;
+    
+    public void setValor(double valor) {
+        this.valor = valor;
     }
-
-    public void setImpuestos(double impuestos) {
-        this.impuestos = impuestos;
+    
+    public LocalDate getFechaInicio() {
+        return fechaInicio;
     }
-
-    public double getTotal() {
-        return total;
+    
+    public void setFechaInicio(LocalDate fechaInicio) {
+        this.fechaInicio = fechaInicio;
     }
-
-    public String getCedulaCliente() {
-        return cedulaCliente;
+    
+    public LocalDate getFechaFin() {
+        return fechaFin;
     }
-
-    public void setCedulaCliente(String cedulaCliente) {
-        this.cedulaCliente = cedulaCliente;
+    
+    public void setFechaFin(LocalDate fechaFin) {
+        this.fechaFin = fechaFin;
     }
-
-    public LocalDateTime getFecha() {
-        return fecha;
+    
+    public String getCodigoPromo() {
+        return codigoPromo;
     }
-
-    public void setFecha(LocalDateTime fecha) {
-        this.fecha = fecha;
+    
+    public void setCodigoPromo(String codigoPromo) {
+        this.codigoPromo = codigoPromo;
     }
-
-    public void setTotal(double total) {
-        this.total = total;
-    }
-
-    public int getSinpe() {
-        return sinpe;
-    }
-
-    public void setSinpe(int sinpe) {
-        this.sinpe = sinpe;
-    }
-
+    
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Bill bill)) return false;
-        return getId() == bill.getId() && Double.compare(getSubtotal(), bill.getSubtotal()) == 0 && Double.compare(getImpuestos(), bill.getImpuestos()) == 0 && Double.compare(getTotal(), bill.getTotal()) == 0 && getSinpe() == bill.getSinpe() && Objects.equals(getProductos(), bill.getProductos());
+        if (this == o) return true;
+        if (!(o instanceof Discount)) return false;
+        Discount discount = (Discount) o;
+        return id == discount.id &&
+               esPorcentual == discount.esPorcentual &&
+               Double.compare(discount.valor, valor) == 0 &&
+               Objects.equals(nombre, discount.nombre) &&
+               Objects.equals(fechaInicio, discount.fechaInicio) &&
+               Objects.equals(fechaFin, discount.fechaFin) &&
+               Objects.equals(codigoPromo, discount.codigoPromo);
     }
-
+    
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getProductos(), getSubtotal(), getImpuestos(), getTotal(), getSinpe());
+        return Objects.hash(id, nombre, esPorcentual, valor, fechaInicio, fechaFin, codigoPromo);
+    }
+    
+    @Override
+    public String toString() {
+        return "Discount{" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", tipo=" + (esPorcentual ? "Porcentual" : "Monto fijo") +
+                ", valor=" + (esPorcentual ? valor + "%" : "₡" + valor) +
+                ", vigencia=" + fechaInicio + (fechaFin != null ? " hasta " + fechaFin : " sin fecha de fin") +
+                (codigoPromo != null ? ", código='" + codigoPromo + '\'' : "") +
+                '}';
     }
 }
