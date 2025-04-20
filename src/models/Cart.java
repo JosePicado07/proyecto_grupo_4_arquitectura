@@ -58,33 +58,33 @@ public class Cart {
         quantities.remove(productId);
         return false;
     }
-    
+
     public boolean updateItem(int productId, int newQuantity) {
         if (newQuantity < 0) {
             return false;
         }
-        
+
         int currentQuantity = quantities.getOrDefault(productId, 0);
         if (currentQuantity == 0) {
             return false; // Producto no está en el carrito
         }
-        
+
         if (newQuantity == 0) {
-            quantities.remove(productId);
             items.removeIf(item -> item != null && item.getId() == productId);
+            quantities.remove(productId);
             return true;
         }
-        
+
         Product product = items.stream()
                 .filter(p -> p != null && p.getId() == productId)
                 .findFirst()
                 .orElse(null);
-        
+
         if (product == null) {
             quantities.remove(productId);
             return false;
         }
-        
+
         int quantityDifference = newQuantity - currentQuantity;
         if (quantityDifference > 0) {
             for (int i = 0; i < quantityDifference; i++) {
@@ -92,21 +92,19 @@ public class Cart {
             }
         } else if (quantityDifference < 0) {
             int toRemove = -quantityDifference;
-            List<Product> toRemoveList = new ArrayList<>();
             int removed = 0;
-            for (Product item : items) {
-                if (item != null && item.getId() == productId && removed < toRemove) {
-                    toRemoveList.add(item);
+            for (int i = items.size() - 1; i >= 0 && removed < toRemove; i--) {
+                if (items.get(i) != null && items.get(i).getId() == productId) {
+                    items.remove(i);
                     removed++;
                 }
             }
-            items.removeAll(toRemoveList);
             if (removed < toRemove) {
                 quantities.remove(productId);
                 return false;
             }
         }
-        
+
         quantities.put(productId, newQuantity);
         return true;
     }
